@@ -56,15 +56,131 @@ def main():
         words_parse = word_tokenizer(sentence)
 
         for word_parse in words_parse:
-            count_parse_number(word_parse)
+
+            tokens = tokenize_word_parse(word_parse)
+            get_word_roots(tokens)
+            # count_parse_number(tokens)  # fills the statistics
             # word_dictionary['word'] = pure_word
             # word_dictionary['#sequence'] = (len(tokens)-1) / 3
             # word_dictionary['whole_sequences'] =
             # count_seq(tokens)
     f.close()
-    sorted_parsing_statistic = sort_parsing_statistic_by_key()
-    sorted_parsing_statistic = calculate_statistics(sorted_parsing_statistic)
-    write_parsing_statistic_to_file("sorted_parsing_statistic.mc", sorted_parsing_statistic)
+    print("number of word roots: {0}".format(len(word_root_list)))
+    print("number of distinct word roots: {0}".format(len(set(word_root_list))))
+    distinct_word_root_list = set(word_root_list)
+    print("number of distinct word roots: {0}".format(len(distinct_word_root_list)))
+
+    nondistinct_word_root_statistic_formatted = word_root_occurence_statistics()
+    write_word_root_occurence_statistic_to_file("word_root_occurence_statistic.mc",
+                                                nondistinct_word_root_statistic_formatted)
+
+    #  ############### statistics ################################
+    calculate_word_root_statistics(distinct_word_root_list)
+    write_word_root_statistic_to_file("word_root_statistic.mc")
+
+    #  ############### statistics ################################
+    # sorted_parsing_statistic = sort_parsing_statistic_by_key()
+    # sorted_parsing_statistic = calculate_statistics(sorted_parsing_statistic)
+    # write_parsing_stastistic_to_file("sorted_parsing_statistic.mc", sorted_parsing_statistic)
+
+
+def write_word_root_occurence_statistic_to_file(filename, nondistinct_word_root_statistic_formatted):
+    tabulated_word_root__occurence_statistic = \
+        [(counts,
+            statistics["total"]# , statistics["roots"]
+          ) for counts, statistics in nondistinct_word_root_statistic_formatted.items()]
+
+    with open(filename, 'w') as f:
+        f.write(tabulate(tabulated_word_root__occurence_statistic,
+                         tablefmt="plain",
+                         headers=["Count",
+                                  "Total"]))
+    f.close()
+
+
+def word_root_occurence_statistics():
+    # generates word  root occurences count data structure
+    for word_root in word_root_list:
+        if word_root in nondistinct_word_root_statistic:
+            nondistinct_word_root_statistic[word_root]["count"] += 1
+        else:
+            nondistinct_word_root_statistic[word_root] = {"count": 1}
+
+    nondistinct_word_root_statistic_formatted = dict()
+
+    for key in nondistinct_word_root_statistic:
+        if nondistinct_word_root_statistic[key]["count"] in nondistinct_word_root_statistic_formatted:
+            nondistinct_word_root_statistic_formatted[nondistinct_word_root_statistic[key]["count"]]["total"] += 1
+            nondistinct_word_root_statistic_formatted[nondistinct_word_root_statistic[key]["count"]]["roots"].append(key)
+        else:
+            nondistinct_word_root_statistic_formatted[nondistinct_word_root_statistic[key]["count"]] = {"total": 1, "roots": [key]}
+    return nondistinct_word_root_statistic_formatted
+
+
+def write_word_root_statistic_to_file(filename):
+    """Writes word_root_statistic into the given filename.
+
+    :param filename: filename of the output.
+    :return: None
+    """
+
+    tabulated_word_root_statistic = \
+        [(root_type,
+          statistics["count"]  # , statistics["roots"]
+          ) for root_type, statistics in distinct_word_root_statistic.items()]
+
+    with open(filename, 'w') as f:
+        f.write(tabulate(tabulated_word_root_statistic,
+                         tablefmt="plain",
+                         headers=["Root_Type",
+                                  "Count"]))
+    f.close()
+
+
+def get_sequence_tag_type(word_root):
+    """Returns the tag type. Ex: "Noun" tag type for "Volkan[Noun]+[Prop]+[A3sg]+[Pnon]+[Nom]" word_root
+
+    :param word_root: string --> "Volkan[Noun]+[Prop]+[A3sg]+[Pnon]+[Nom]"
+    :return: string -->'Noun'
+    """
+    try:
+        tag_type = word_root.split('[', 1)[1].split(']', 1)[0]
+    except IndexError:
+        tag_type = 'null'
+
+    return tag_type
+
+
+def calculate_word_root_statistics(distinct_word_root_list):
+
+    for word_root in distinct_word_root_list:
+        root = get_sequence_root(word_root)
+        tag_type = get_sequence_tag_type(word_root)
+        if tag_type in distinct_word_root_statistic:
+                distinct_word_root_statistic[tag_type]['count'] += 1
+                distinct_word_root_statistic[tag_type]['roots'].append(root)
+        else:
+            distinct_word_root_statistic[tag_type] = {'roots': [root], 'count': 1}
+
+
+def get_word_roots(tokens):
+    """ Adds possible parses of given tokens to the word_root_list to get all parses.
+
+    :param tokens: word tokens
+    :return: None
+    """
+    word_root_list.extend(tokens[1:])
+
+
+def tokenize_word_parse(word_parse):
+    """Returns the line tokens which is "cezalı cezalı[Adj] ceza[Noun]+[A3sg]+[Pnon]+[Nom]-lH[Adj+With]"
+
+    :param word_parse: cezalı cezalı[Adj] ceza[Noun]+[A3sg]+[Pnon]+[Nom]-lH[Adj+With]
+    :return: list of tokens
+    """
+    # Split word_parse line which is "hafta hafta[Noun]+[A3sg]+[Pnon]+[Nom]  haf[Noun]+[A3sg]+[Pnon]+DA[Loc]"
+    tokens = WhitespaceTokenizer().tokenize(word_parse)
+    return tokens
 
 
 def calculate_statistics(sorted_parsing_statistic):
@@ -151,7 +267,7 @@ def word_tokenizer(text):
     return lines
 
 
-def count_parse_number(word_parse):
+def count_parse_number(tokens):
     """Bir kelimenin olasi tum parse(cozum) sayisi belirlenmektedir.
 
      1 cozumu varsa 1 cozumlu kisim guncellenir ve kelime eklenir. Or:
@@ -165,9 +281,6 @@ def count_parse_number(word_parse):
     :param word_parse: Bir cumledeki herhangi bir kelimenin olasi tum cozumlerinin oldugu satir.
     :return: None,  parsing_statistic global degiskeni guncellenir.
     """
-
-    # Split word_parse line which is "hafta hafta[Noun]+[A3sg]+[Pnon]+[Nom]  haf[Noun]+[A3sg]+[Pnon]+DA[Loc]"
-    tokens = WhitespaceTokenizer().tokenize(word_parse)
 
     # Gets pure word which is "hafta"
     pure_word = tokens[0]
@@ -260,6 +373,9 @@ def split_bs_es_tags(text):
 
 if __name__ == '__main__':
     parsing_statistic = dict()
+    word_root_list = list()  # parse edilmis her bir cozumleme
+    distinct_word_root_statistic = dict()  # parse edilmis her bir unique cozumleme istatistigi
     word_dictionary = dict()
     sequence_dictionary = dict()
+    nondistinct_word_root_statistic = dict()  # parse edilmis her olasi kokun adet bilgisi
     main()

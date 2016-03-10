@@ -8,6 +8,7 @@ import codecs
 import nltk
 from nltk.tokenize import LineTokenizer
 from nltk.tokenize import WhitespaceTokenizer
+from tabulate import tabulate
 
 
 if len(sys.argv) < 2:
@@ -36,21 +37,68 @@ def main():
     f.close()
 
     tags = get_tags(word_parsing_list)
+    tags_statistic_dict = calculate_tag_statistics(tags)
 
+    # #### verileri google drive kopyalamak zor oldugu icin parcali yazdirma islemi yapildi #####
+    # with open("tag_statistic.delete", 'w') as f1:
+    #     with open("count_statistic.delete", 'w') as f2:
+    #         for i in tags_statistic_dict:
+    #             f1.write("{0}\n".format(i))
+    #             f2.write("{0}\n".format(tags_statistic_dict[i]["count"]))
+    #     f2.close()
+    # f1.close()
+    # #### verileri google drive kopyalamak zor oldugu icin parcali yazdirma islemi yapildi #####
+
+    write_tags_statistic_to_file("tags_statistics.mc", tags_statistic_dict)
+
+    # ######### print tag statistics #########
     print("number of tag: {0}".format(len(tags)))
-    print("number of tag: {0}".format(len(word_parsing_list)))
-    # print("number of distinct tag: {0}".format(set(len(tags))))
+    print("number of word_parsing: {0}".format(len(word_parsing_list)))
     fd = nltk.FreqDist(tags)
     print("number of distinct tag: {0}".format(len(fd.keys())))
+    # ######### print tag statistics #########
+
+
+def calculate_tag_statistics(tags):
+    """ Return tag counts in dict format.
+
+    :param tags: list of tags
+    :return: dictionary
+    """
+
+    tags_statistic_dict = dict()
+    for tag in tags:
+        if tag in tags_statistic_dict:
+            tags_statistic_dict[tag]["count"] += 1
+        else:
+            tags_statistic_dict[tag] = {"count": 1}
+
+    return tags_statistic_dict
+
+
+def write_tags_statistic_to_file(filename, tags_statistic_dict):
+    tabulated_tags_statistic = \
+        [(tag,
+            statistics["count"]  # , statistics["roots"]
+          ) for tag, statistics in tags_statistic_dict.items()]
+
+    with open(filename, 'w') as f:
+        f.write(tabulate(tabulated_tags_statistic,
+                         tablefmt="plain",
+                         headers=["Tag",
+                                  "Count"]))
+    f.close()
 
 
 def get_tags(word_parsing_list):
     tags = list()
     for word_parse in word_parsing_list:
-        root = word_parse.split('[', 1)[0]
-        tag = word_parse.split(root, 1)[1]
-        tags.append(tag)
-        print(tag)
+        try:
+            root = word_parse.split('[', 1)[0]
+            tag = word_parse.split(root, 1)[1]
+            tags.append(tag)
+        except ValueError:
+            print(word_parse)
 
     return tags
 

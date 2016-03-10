@@ -45,14 +45,14 @@ def main():
 
 
 def get_tags(word_parsing_list):
-	tags = list()
-	for word_parse in word_parsing_list:
-		root = word_parse.split('[', 1)[0]
-		tag = word_parse.split(root, 1)[1]
-		tags.append(tag)
-		print(tag)
+    tags = list()
+    for word_parse in word_parsing_list:
+        root = word_parse.split('[', 1)[0]
+        tag = word_parse.split(root, 1)[1]
+        tags.append(tag)
+        print(tag)
 
-	return tags
+    return tags
 
 
 def word_tokenizer(text):

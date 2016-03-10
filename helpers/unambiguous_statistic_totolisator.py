@@ -20,30 +20,37 @@ if len(sys.argv) < 2:
 def main():
     f = codecs.open(sys.argv[1], mode="r", encoding="utf-8")
     raw_data = f.read()
+    f.close()
 
     # Split sentences by removing BS ES Tags in Hasim Sak Analyzer
     sentences = split_bs_es_tags(raw_data)
 
-    word_parsing_list = list()
+    word_parsing_list = list()  # her bir elemanı seklindeki['ve', 've[Conj]'] listelerdir.
 
     for sentence in sentences:
 
-        # Split sentences into lines which are word and its sequence
-        words_parse = word_tokenizer(sentence)
+        # Split sentences into lines which are word and its parses
+        word_parses = word_tokenizer(sentence)
 
-        for word_parse in words_parse:
+        for word_parse in word_parses:
 
             tokens = tokenize_word_parse(word_parse)
-            word_parsing_list.append(tokens)
-    f.close()
+            if tokens is None:
+                continue
+            else:
+                word_parsing_list.append(tokens)
+
+    print("Tüm kelime çözümleri parse edilip listeye[word_parsing_list] alındı...")
 
     unambiguous_series_list = calculate_unambiguity_statistic(word_parsing_list)
+    print("Unambiguity istatislikleri hesaplandi.[peşpeşe gelen unambiguous dizilerin bulunması]")
 
     unambiguous_series_statistic = dict()
     for serie in unambiguous_series_list:
         if len(serie) in unambiguous_series_statistic:
             unambiguous_series_statistic[len(serie)]["count"] += 1
-            unambiguous_series_statistic[len(serie)]["parses"].append(serie)
+            if unambiguous_series_statistic[len(serie)]["count"] < 100:
+                unambiguous_series_statistic[len(serie)]["parses"].append(serie)
         else:
             unambiguous_series_statistic[len(serie)] = {"count": 1, "parses": [serie]}
 
@@ -53,14 +60,16 @@ def main():
 def write_unambiguous_series_statistic_to_file(filename, unambiguous_series_statistic):
     tabulated_unambiguous_series_statistic = \
         [(lengths,
-            statistics["count"]# , statistics["roots"]
+            statistics["count"],
+            statistics["parses"]
           ) for lengths, statistics in unambiguous_series_statistic.items()]
 
     with open(filename, 'w') as f:
         f.write(tabulate(tabulated_unambiguous_series_statistic,
                          tablefmt="plain",
                          headers=["Series Length",
-                                  "Count"]))
+                                  "Count",
+                                  "Parses"]))
     f.close()
 
     # print(unabiguous_seris_list)
@@ -149,6 +158,10 @@ def tokenize_word_parse(word_parse):
     """
     # Split word_parse line which is "hafta hafta[Noun]+[A3sg]+[Pnon]+[Nom]  haf[Noun]+[A3sg]+[Pnon]+DA[Loc]"
     tokens = WhitespaceTokenizer().tokenize(word_parse)
+    for token in tokens:
+        if "[Unknown]" in token or "[unknown]" in token or token[0] == "" or "[Num]" in token:
+            return None
+
     return tokens
 
 if __name__ == '__main__':
